@@ -89,7 +89,21 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 	docDefinition.compress = isBoolean(docDefinition.compress) ? docDefinition.compress : true;
 	docDefinition.images = docDefinition.images || {};
 
-	var pageSize = fixPageSize(docDefinition.pageSize, docDefinition.pageOrientation);
+	this.docDefinition = docDefinition;
+	this.options = options;
+
+	this.initPdfKit();
+	this.initLayoutBuilder();
+	this.renderPages();
+
+	return this.pdfKitDoc;
+};
+
+PdfPrinter.prototype.initPdfKit = function () {
+	var docDefinition = this.docDefinition;
+	var options = this.options;
+
+	var pageSize = this.pageSize = fixPageSize(docDefinition.pageSize, docDefinition.pageOrientation);
 
 	var pdfOptions = {
 		size: [pageSize.width, pageSize.height],
@@ -106,15 +120,21 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 	setMetadata(docDefinition, this.pdfKitDoc);
 
 	this.fontProvider = new FontProvider(this.fontDescriptors, this.pdfKitDoc);
+};
 
-	var builder = new LayoutBuilder(pageSize, fixPageMargins(docDefinition.pageMargins || 40), new ImageMeasure(this.pdfKitDoc, docDefinition.images));
+PdfPrinter.prototype.initLayoutBuilder = function () {
+	var docDefinition = this.docDefinition;
+	var pageSize = this.pageSize;
+	var options = this.options;
+
+	var builder = this.builder = new LayoutBuilder(this.pageSize, fixPageMargins(docDefinition.pageMargins || 40), new ImageMeasure(this.pdfKitDoc, docDefinition.images));
 
 	registerDefaultTableLayouts(builder);
 	if (options.tableLayouts) {
 		builder.registerTableLayouts(options.tableLayouts);
 	}
 
-	var pages = builder.layoutDocument(docDefinition.content, this.fontProvider, docDefinition.styles || {}, docDefinition.defaultStyle || {fontSize: 12, font: 'Roboto'}, docDefinition.background, docDefinition.header, docDefinition.footer, docDefinition.images, docDefinition.watermark, docDefinition.pageBreakBefore);
+	var pages = this.pages = builder.layoutDocument(docDefinition.content, this.fontProvider, docDefinition.styles || {}, docDefinition.defaultStyle || {fontSize: 12, font: 'Roboto'}, docDefinition.background, docDefinition.header, docDefinition.footer, docDefinition.images, docDefinition.watermark, docDefinition.pageBreakBefore);
 	var maxNumberPages = docDefinition.maxPagesNumber || -1;
 	if (isNumber(maxNumberPages) && maxNumberPages > -1) {
 		pages = pages.slice(0, maxNumberPages);
@@ -126,10 +146,11 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 		var pageHeight = calculatePageHeight(pages, docDefinition.pageMargins);
 		this.pdfKitDoc.options.size = [pageSize.width, pageHeight];
 	}
+};
+PdfPrinter.prototype.renderPages = function () {
+	renderPages(this.pages, this.fontProvider, this.pdfKitDoc, this.options.progressCallback);
 
-	renderPages(pages, this.fontProvider, this.pdfKitDoc, options.progressCallback);
-
-	if (options.autoPrint) {
+	if (this.options.autoPrint) {
 		var printActionRef = this.pdfKitDoc.ref({
 			Type: 'Action',
 			S: 'Named',
@@ -138,7 +159,6 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 		this.pdfKitDoc._root.data.OpenAction = printActionRef;
 		printActionRef.end();
 	}
-	return this.pdfKitDoc;
 };
 
 function setMetadata(docDefinition, pdfKitDoc) {

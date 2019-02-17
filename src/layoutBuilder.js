@@ -192,6 +192,24 @@ LayoutBuilder.prototype.addStaticRepeatable = function (headerOrFooter, sizeFunc
 	}, sizeFunction);
 };
 
+LayoutBuilder.prototype.getTocs = function () {
+	var result = {};
+
+	Object.keys(this.docPreprocessor.tocs).forEach(function (tocName) {
+		var items = this.docPreprocessor.tocs[tocName].toc._items;
+		result[tocName] = {};
+		items.forEach(function (item) {
+			var textRef = item._textNodeRef;
+			result[tocName][textRef.id] = {
+				text: textRef.text,
+				pageNumber: textRef.positions ? textRef.positions[0].pageNumber : null
+			};
+		});
+	}.bind(this));
+
+	return result;
+}
+
 LayoutBuilder.prototype.addDynamicRepeatable = function (nodeGetter, sizeFunction) {
 	var pages = this.writer.context().pages;
 
@@ -203,7 +221,11 @@ LayoutBuilder.prototype.addDynamicRepeatable = function (nodeGetter, sizeFunctio
 		if (node) {
 			var sizes = sizeFunction(this.writer.context().getCurrentPage().pageSize, this.pageMargins);
 			this.writer.beginUnbreakableBlock(sizes.width, sizes.height);
-			node = this.docPreprocessor.preprocessDocument(node);
+
+			// separate preprocessor in order to keep existing toc and node references
+			this.docPreprocessorRepeatable = new DocPreprocessor();
+			node = this.docPreprocessorRepeatable.preprocessDocument(node);
+
 			this.processNode(this.docMeasure.measureDocument(node));
 			this.writer.commitUnbreakableBlock(sizes.x, sizes.y);
 		}
