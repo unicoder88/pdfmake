@@ -52,7 +52,7 @@ LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
  * @param {Object} defaultStyle default style definition
  * @return {Array} an array of pages
  */
-LayoutBuilder.prototype.layoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark, pageBreakBeforeFct) {
+LayoutBuilder.prototype.layoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, leftHeader, rightHeader, footer, images, watermark, pageBreakBeforeFct) {
 
 	function addPageBreaksIfNecessary(linearNodeList, pages) {
 
@@ -133,16 +133,16 @@ LayoutBuilder.prototype.layoutDocument = function (docStructure, fontProvider, s
 		});
 	}
 
-	var result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
+	var result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, leftHeader, rightHeader, footer, images, watermark);
 	while (addPageBreaksIfNecessary(result.linearNodeList, result.pages)) {
 		resetXYs(result);
-		result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
+		result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, leftHeader, rightHeader, footer, images, watermark);
 	}
 
 	return result.pages;
 };
 
-LayoutBuilder.prototype.tryLayoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark, pageBreakBeforeFct) {
+LayoutBuilder.prototype.tryLayoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, leftHeader, rightHeader, footer, images, watermark, pageBreakBeforeFct) {
 
 	this.linearNodeList = [];
 	docStructure = this.docPreprocessor.preprocessDocument(docStructure);
@@ -158,7 +158,7 @@ LayoutBuilder.prototype.tryLayoutDocument = function (docStructure, fontProvider
 
 	this.addBackground(background);
 	this.processNode(docStructure);
-	this.addHeadersAndFooters(header, footer);
+	this.addHeadersAndFooters(header, footer, leftHeader, rightHeader);
 	if (watermark != null) {
 		this.addWatermark(watermark, fontProvider, defaultStyle);
 	}
@@ -232,7 +232,7 @@ LayoutBuilder.prototype.addDynamicRepeatable = function (nodeGetter, sizeFunctio
 	}
 };
 
-LayoutBuilder.prototype.addHeadersAndFooters = function (header, footer) {
+LayoutBuilder.prototype.addHeadersAndFooters = function (header, footer, leftHeader, rightHeader) {
 	var headerSizeFct = function (pageSize, pageMargins) {
 		return {
 			x: 0,
@@ -251,6 +251,24 @@ LayoutBuilder.prototype.addHeadersAndFooters = function (header, footer) {
 		};
 	};
 
+	var leftHeaderSizeFct = function (pageSize, pageMargins) {
+		return {
+			x: 0,
+			y: 0,
+			width: pageMargins.left,
+			height: pageSize.height
+		};
+	};
+
+	var rightHeaderSizeFct = function (pageSize, pageMargins) {
+		return {
+			x: pageSize.width - pageMargins.right,
+			y: 0,
+			width: pageMargins.right,
+			height: pageSize.height
+		};
+	};
+
 	if (isFunction(header)) {
 		this.addDynamicRepeatable(header, headerSizeFct);
 	} else if (header) {
@@ -261,6 +279,18 @@ LayoutBuilder.prototype.addHeadersAndFooters = function (header, footer) {
 		this.addDynamicRepeatable(footer, footerSizeFct);
 	} else if (footer) {
 		this.addStaticRepeatable(footer, footerSizeFct);
+	}
+
+	if (isFunction(leftHeader)) {
+		this.addDynamicRepeatable(leftHeader, leftHeaderSizeFct);
+	} else if (leftHeader) {
+		this.addStaticRepeatable(leftHeader, leftHeaderSizeFct);
+	}
+
+	if (isFunction(rightHeader)) {
+		this.addDynamicRepeatable(rightHeader, rightHeaderSizeFct);
+	} else if (rightHeader) {
+		this.addStaticRepeatable(rightHeader, rightHeaderSizeFct);
 	}
 };
 
