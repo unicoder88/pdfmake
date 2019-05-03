@@ -179,7 +179,10 @@ LayoutBuilder.prototype.addBackground = function (background) {
 
 	if (pageBackground) {
 		this.writer.beginUnbreakableBlock(pageSize.width, pageSize.height);
-		pageBackground = this.docPreprocessor.preprocessDocument(pageBackground);
+
+		// separate preprocessor in order to keep existing toc and node references
+		this.docPreprocessorBackground = new DocPreprocessor();
+		pageBackground = this.docPreprocessorBackground.preprocessDocument(pageBackground);
 		this.processNode(this.docMeasure.measureDocument(pageBackground));
 		this.writer.commitUnbreakableBlock(0, 0);
 		context.backgroundLength[context.page] += pageBackground.positions.length;
