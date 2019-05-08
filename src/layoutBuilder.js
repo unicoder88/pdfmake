@@ -205,7 +205,7 @@ LayoutBuilder.prototype.getTocs = function () {
 			var textRef = item._textNodeRef;
 			result[tocName][textRef.id] = {
 				text: textRef.text,
-				pageNumber: textRef.positions ? textRef.positions[0].pageNumber : null
+				pageNumber: textRef.positions && textRef.positions[0] ? textRef.positions[0].pageNumber : null
 			};
 		});
 	}.bind(this));
